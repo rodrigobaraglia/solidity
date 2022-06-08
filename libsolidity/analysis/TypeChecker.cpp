@@ -1403,41 +1403,51 @@ bool TypeChecker::visit(Conditional const& _conditional)
 	_conditional.trueExpression().accept(*this);
 	_conditional.falseExpression().accept(*this);
 
-	Type const* trueType = type(_conditional.trueExpression())->mobileType();
-	Type const* falseType = type(_conditional.falseExpression())->mobileType();
+	Type const* trueType =  type(_conditional.trueExpression());
+	Type const* falseType = type(_conditional.falseExpression());
+	Type const* trueMobileType = trueType->mobileType();
+	Type const* falseMobileType = falseType->mobileType();
 
 	Type const* commonType = nullptr;
 
-	if (!trueType)
-		m_errorReporter.typeError(9717_error, _conditional.trueExpression().location(), "Invalid mobile type in true expression.");
-	else
-		commonType = trueType;
+	if (trueMobileType && falseType->isImplicitlyConvertibleTo(*trueMobileType))
+		commonType = trueMobileType;
+	else if (falseMobileType && trueType->isImplicitlyConvertibleTo(*falseMobileType))
+		commonType = falseMobileType;
 
-	if (!falseType)
-		m_errorReporter.typeError(3703_error, _conditional.falseExpression().location(), "Invalid mobile type in false expression.");
-	else
-		commonType = falseType;
-
-	if (!trueType && !falseType)
-		BOOST_THROW_EXCEPTION(FatalError());
-	else if (trueType && falseType)
+	if (!commonType)
 	{
-		commonType = Type::commonType(trueType, falseType);
+		if (trueMobileType)
+			commonType = trueMobileType;
+		else
+			m_errorReporter.typeError(9717_error, _conditional.trueExpression().location(), "Invalid mobile type in true expression.");
 
-		if (!commonType)
+		if (falseMobileType)
+			commonType = falseMobileType;
+		else
+			m_errorReporter.typeError(3703_error, _conditional.falseExpression().location(), "Invalid mobile type in false expression.");
+
+		if (!trueMobileType && !falseMobileType)
+			BOOST_THROW_EXCEPTION(FatalError());
+		else if (trueMobileType && falseMobileType)
 		{
-			m_errorReporter.typeError(
-					1080_error,
-					_conditional.location(),
-					"True expression's type " +
-					trueType->toString() +
-					" does not match false expression's type " +
-					falseType->toString() +
-					"."
-					);
-			// even we can't find a common type, we have to set a type here,
-			// otherwise the upper statement will not be able to check the type.
-			commonType = trueType;
+			commonType = Type::commonType(trueMobileType, falseMobileType);
+
+			if (!commonType)
+			{
+				m_errorReporter.typeError(
+						1080_error,
+						_conditional.location(),
+						"True expression's type " +
+						trueMobileType->toString() +
+						" does not match false expression's type " +
+						falseMobileType->toString() +
+						"."
+						);
+				// even we can't find a common type, we have to set a type here,
+				// otherwise the upper statement will not be able to check the type.
+				commonType = trueMobileType;
+			}
 		}
 	}
 
