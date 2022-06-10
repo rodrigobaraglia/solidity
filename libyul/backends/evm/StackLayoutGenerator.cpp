@@ -803,14 +803,18 @@ void StackLayoutGenerator::fillInJunk(CFG::BasicBlock const& _block, CFG::Functi
 		{
 			auto& blockInfo = m_layout.blockInfos.at(_block);
 			Stack entryLayout = blockInfo.entryLayout;
-			size_t bestNumJunk = getBestNumJunk(
-				entryLayout,
-				_block->operations.empty() ? blockInfo.exitLayout : m_layout.operationEntryLayout.at(&_block->operations.front())
-			);
-			if (bestNumJunk > 0)
+			Stack const& nextLayout = _block->operations.empty() ? blockInfo.exitLayout : m_layout.operationEntryLayout.at(&_block->operations.front());
+			if (entryLayout != nextLayout)
 			{
-				addJunkRecursive(_block, bestNumJunk);
-				blockInfo.entryLayout = entryLayout;
+				size_t bestNumJunk = getBestNumJunk(
+					entryLayout,
+					nextLayout
+				);
+				if (bestNumJunk > 0)
+				{
+					addJunkRecursive(_block, bestNumJunk);
+					blockInfo.entryLayout = entryLayout;
+				}
 			}
 		}
 		std::visit(util::GenericVisitor{

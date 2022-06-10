@@ -477,35 +477,35 @@ void ControlFlowGraphBuilder::operator()(FunctionDefinition const& _function)
 	builder.m_currentBlock->exit = CFG::BasicBlock::FunctionReturn{debugDataOf(_function), &functionInfo};
 }
 
-void ControlFlowGraphBuilder::registerFunction(FunctionDefinition const& _function)
+void ControlFlowGraphBuilder::registerFunction(FunctionDefinition const& _functionDefinition)
 {
 	yulAssert(m_scope, "");
-	yulAssert(m_scope->identifiers.count(_function.name), "");
-	Scope::Function& function = std::get<Scope::Function>(m_scope->identifiers.at(_function.name));
+	yulAssert(m_scope->identifiers.count(_functionDefinition.name), "");
+	Scope::Function& function = std::get<Scope::Function>(m_scope->identifiers.at(_functionDefinition.name));
 
-	yulAssert(m_info.scopes.at(&_function.body), "");
-	Scope* virtualFunctionScope = m_info.scopes.at(m_info.virtualBlocks.at(&_function).get()).get();
+	yulAssert(m_info.scopes.at(&_functionDefinition.body), "");
+	Scope* virtualFunctionScope = m_info.scopes.at(m_info.virtualBlocks.at(&_functionDefinition).get()).get();
 	yulAssert(virtualFunctionScope, "");
 
 	bool inserted = m_graph.functionInfo.emplace(std::make_pair(&function, CFG::FunctionInfo{
-		_function.debugData,
+		_functionDefinition.debugData,
 		function,
-		_function,
-		&m_graph.makeBlock(debugDataOf(_function.body)),
-		_function.parameters | ranges::views::transform([&](auto const& _param) {
+		_functionDefinition,
+		&m_graph.makeBlock(debugDataOf(_functionDefinition.body)),
+		_functionDefinition.parameters | ranges::views::transform([&](auto const& _param) {
 			return VariableSlot{
 				std::get<Scope::Variable>(virtualFunctionScope->identifiers.at(_param.name)),
 				_param.debugData
 			};
 		}) | ranges::to<vector>,
-		_function.returnVariables | ranges::views::transform([&](auto const& _retVar) {
+		_functionDefinition.returnVariables | ranges::views::transform([&](auto const& _retVar) {
 			return VariableSlot{
 				std::get<Scope::Variable>(virtualFunctionScope->identifiers.at(_retVar.name)),
 				_retVar.debugData
 			};
 		}) | ranges::to<vector>,
 		{},
-		m_functionSideEffects.at(&_function).canContinue
+		m_functionSideEffects.at(&_functionDefinition).canContinue
 	})).second;
 	yulAssert(inserted);
 }
@@ -553,7 +553,7 @@ Stack const& ControlFlowGraphBuilder::visitFunctionCall(FunctionCall const& _cal
 				return TemporarySlot{_call, _i};
 			}) | ranges::to<Stack>,
 			// operation
-			CFG::FunctionCall{_call.debugData, function, _call, false, canContinue}
+			CFG::FunctionCall{_call.debugData, function, _call, /* recursive */ false, canContinue}
 		}).output;
 	}
 	if (!canContinue)
