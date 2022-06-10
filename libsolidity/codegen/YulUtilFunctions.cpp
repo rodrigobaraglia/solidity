@@ -640,9 +640,10 @@ string YulUtilFunctions::overflowCheckedIntAddFunction(IntegerType const& _type)
 				<!signed>
 					<?256bit>
 						// overflow, if x > sum
-						if lt(sum, x) { <panic>() }
+						if gt(x, sum) { <panic>() }
 					<!256bit>
-						if lt(<maxValue>, sum) { <panic>() }
+						// overflow, if sum > maxValue
+						if gt(sum, <maxValue>) { <panic>() }
 					</256bit>
 				</signed>
 			}
